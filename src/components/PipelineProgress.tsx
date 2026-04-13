@@ -63,7 +63,7 @@ export function PipelineProgress({ currentStep, progress }: PipelineProgressProp
         })}
       </div>
 
-      {currentStep !== 'done' && currentStep !== 'idle' && currentStep !== 'error' && (
+      {currentStep !== 'done' && (currentStep as string) !== 'idle' && currentStep !== 'error' && (
         <div className="w-full bg-secondary rounded-full h-1.5 overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-300 ease-out"
