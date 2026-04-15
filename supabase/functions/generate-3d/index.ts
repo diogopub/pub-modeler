@@ -24,6 +24,18 @@ serve(async (req) => {
 
     const action = req.headers.get('x-action') || new URL(req.url).searchParams.get('action');
 
+    // Action: check balance
+    if (action === 'balance') {
+      const balRes = await fetch(`${TRIPO_BASE}/user/balance`, {
+        headers: tripoHeaders,
+      });
+      const balData = await balRes.json();
+      console.log('Tripo balance response:', JSON.stringify(balData));
+      return new Response(JSON.stringify(balData), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Action: upload image to Tripo
     if (action === 'upload') {
       const formData = await req.formData();
