@@ -63,7 +63,7 @@ const Index = () => {
         {state.step === 'idle' && (
           <div className="max-w-lg mx-auto mb-12">
             <ImageUpload
-              onImageSelected={(file) => runDemoPipeline(file)}
+              onImageSelected={(file) => runPipeline(file)}
               disabled={isProcessing}
             />
           </div>
