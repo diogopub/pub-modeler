@@ -72,19 +72,9 @@ export function usePipeline() {
 
       const removeBgData = await response.blob();
 
-      if (removeBgError) throw new Error(`Erro ao remover fundo: ${removeBgError.message}`);
       if (abortRef.current) return;
 
-      let noBgBlob: Blob;
-      if (removeBgData instanceof Blob) {
-        noBgBlob = removeBgData;
-      } else if (removeBgData instanceof ArrayBuffer) {
-        noBgBlob = new Blob([removeBgData], { type: 'image/png' });
-      } else {
-        const errorData = typeof removeBgData === 'string' ? JSON.parse(removeBgData) : removeBgData;
-        if (errorData?.error) throw new Error(errorData.error);
-        throw new Error('Resposta inesperada do remove-bg');
-      }
+      const noBgBlob = removeBgData;
 
       const noBgUrl = URL.createObjectURL(noBgBlob);
       setState(prev => ({ ...prev, noBgImage: noBgUrl, progress: 100 }));
