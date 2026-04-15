@@ -11,7 +11,7 @@ const Index = () => {
     state,
     setModelFormat,
     reset,
-    runDemoPipeline,
+    runPipeline,
   } = usePipeline();
 
   const isProcessing = !['idle', 'done', 'error'].includes(state.step);
