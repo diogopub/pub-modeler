@@ -1,10 +1,12 @@
+import { lazy, Suspense } from 'react';
 import { Box, Sparkles, RotateCcw } from 'lucide-react';
 import { ImageUpload } from '@/components/ImageUpload';
 import { PipelineProgress } from '@/components/PipelineProgress';
-import { ModelViewer } from '@/components/ModelViewer';
 import { DownloadSection } from '@/components/DownloadSection';
 import { usePipeline } from '@/hooks/usePipeline';
 import { Button } from '@/components/ui/button';
+
+const ModelViewer = lazy(() => import('@/components/ModelViewer').then(m => ({ default: m.ModelViewer })));
 
 const Index = () => {
   const {
@@ -130,7 +132,9 @@ const Index = () => {
 
             {/* Right: 3D viewer */}
             <div className="min-h-[400px]">
-              <ModelViewer modelUrl={state.modelUrl} className="h-full" />
+              <Suspense fallback={<div className="h-full rounded-2xl bg-muted/30 border border-border flex items-center justify-center text-muted-foreground">Carregando visualizador 3D...</div>}>
+                <ModelViewer modelUrl={state.modelUrl} className="h-full" />
+              </Suspense>
             </div>
           </div>
         )}
