@@ -53,23 +53,28 @@ export function usePipeline() {
       const removeBgForm = new FormData();
       removeBgForm.append('image', file);
 
-      const { data: removeBgData, error: removeBgError } = await supabase.functions.invoke('remove-bg', {
-        body: removeBgForm,
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/remove-bg`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: removeBgForm,
+        }
+      );
 
-      if (removeBgError) throw new Error(`Erro ao remover fundo: ${removeBgError.message}`);
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Erro ao remover fundo: ${errText}`);
+      }
+
+      const removeBgData = await response.blob();
+
       if (abortRef.current) return;
 
-      let noBgBlob: Blob;
-      if (removeBgData instanceof Blob) {
-        noBgBlob = removeBgData;
-      } else if (removeBgData instanceof ArrayBuffer) {
-        noBgBlob = new Blob([removeBgData], { type: 'image/png' });
-      } else {
-        const errorData = typeof removeBgData === 'string' ? JSON.parse(removeBgData) : removeBgData;
-        if (errorData?.error) throw new Error(errorData.error);
-        throw new Error('Resposta inesperada do remove-bg');
-      }
+      const noBgBlob = removeBgData;
 
       const noBgUrl = URL.createObjectURL(noBgBlob);
       setState(prev => ({ ...prev, noBgImage: noBgUrl, progress: 100 }));
