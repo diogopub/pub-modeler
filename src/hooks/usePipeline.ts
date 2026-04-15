@@ -53,9 +53,24 @@ export function usePipeline() {
       const removeBgForm = new FormData();
       removeBgForm.append('image', file);
 
-      const { data: removeBgData, error: removeBgError } = await supabase.functions.invoke('remove-bg', {
-        body: removeBgForm,
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/remove-bg`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: removeBgForm,
+        }
+      );
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Erro ao remover fundo: ${errText}`);
+      }
+
+      const removeBgData = await response.blob();
 
       if (removeBgError) throw new Error(`Erro ao remover fundo: ${removeBgError.message}`);
       if (abortRef.current) return;
