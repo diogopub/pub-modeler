@@ -11,7 +11,7 @@ const Index = () => {
     state,
     setModelFormat,
     reset,
-    runDemoPipeline,
+    runPipeline,
   } = usePipeline();
 
   const isProcessing = !['idle', 'done', 'error'].includes(state.step);
@@ -63,7 +63,7 @@ const Index = () => {
         {state.step === 'idle' && (
           <div className="max-w-lg mx-auto mb-12">
             <ImageUpload
-              onImageSelected={(file) => runDemoPipeline(file)}
+              onImageSelected={(file) => runPipeline(file)}
               disabled={isProcessing}
             />
           </div>
