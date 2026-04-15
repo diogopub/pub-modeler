@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-action, x-task-id',
 };
 
 const TRIPO_BASE = 'https://api.tripo3d.ai/v2/openapi';
@@ -22,7 +22,7 @@ serve(async (req) => {
       'Authorization': `Bearer ${TRIPO_API_KEY}`,
     };
 
-    const { action } = Object.fromEntries(new URL(req.url).searchParams);
+    const action = req.headers.get('x-action') || new URL(req.url).searchParams.get('action');
 
     // Action: upload image to Tripo
     if (action === 'upload') {
@@ -84,15 +84,15 @@ serve(async (req) => {
 
     // Action: poll task status
     if (action === 'poll') {
-      const { task_id } = Object.fromEntries(new URL(req.url).searchParams);
-      if (!task_id) {
+      const taskId = req.headers.get('x-task-id') || new URL(req.url).searchParams.get('task_id');
+      if (!taskId) {
         return new Response(JSON.stringify({ error: 'task_id required' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      const pollRes = await fetch(`${TRIPO_BASE}/task/${task_id}`, {
+      const pollRes = await fetch(`${TRIPO_BASE}/task/${taskId}`, {
         headers: tripoHeaders,
       });
 

@@ -46,7 +46,7 @@ export function usePipeline() {
       // Step 1: Show original image
       const imageUrl = URL.createObjectURL(file);
       setState(prev => ({ ...prev, originalImage: imageUrl, step: 'uploading', progress: 50 }));
-      
+
       // Step 2: Remove background
       setState(prev => ({ ...prev, step: 'removing-bg', progress: 10 }));
 
@@ -60,14 +60,12 @@ export function usePipeline() {
       if (removeBgError) throw new Error(`Erro ao remover fundo: ${removeBgError.message}`);
       if (abortRef.current) return;
 
-      // removeBgData is a Blob when Content-Type is image/png
       let noBgBlob: Blob;
       if (removeBgData instanceof Blob) {
         noBgBlob = removeBgData;
       } else if (removeBgData instanceof ArrayBuffer) {
         noBgBlob = new Blob([removeBgData], { type: 'image/png' });
       } else {
-        // If it came as JSON with an error
         const errorData = typeof removeBgData === 'string' ? JSON.parse(removeBgData) : removeBgData;
         if (errorData?.error) throw new Error(errorData.error);
         throw new Error('Resposta inesperada do remove-bg');
@@ -75,7 +73,6 @@ export function usePipeline() {
 
       const noBgUrl = URL.createObjectURL(noBgBlob);
       setState(prev => ({ ...prev, noBgImage: noBgUrl, progress: 100 }));
-
       if (abortRef.current) return;
 
       // Step 3: Upload to Tripo
@@ -85,12 +82,13 @@ export function usePipeline() {
       const uploadForm = new FormData();
       uploadForm.append('image', noBgFile);
 
-      const { data: uploadData, error: uploadError } = await supabase.functions.invoke('generate-3d?action=upload', {
+      const { data: uploadData, error: uploadError } = await supabase.functions.invoke('generate-3d', {
         body: uploadForm,
+        headers: { 'x-action': 'upload' },
       });
 
       if (uploadError) throw new Error(`Erro no upload Tripo: ${uploadError.message}`);
-      
+
       const fileToken = uploadData?.data?.image_token;
       if (!fileToken) {
         console.error('Upload response:', uploadData);
@@ -103,8 +101,9 @@ export function usePipeline() {
       // Step 4: Create 3D generation task
       setState(prev => ({ ...prev, step: 'generating-3d', progress: 5 }));
 
-      const { data: taskData, error: taskError } = await supabase.functions.invoke('generate-3d?action=create-task', {
+      const { data: taskData, error: taskError } = await supabase.functions.invoke('generate-3d', {
         body: { file_token: fileToken },
+        headers: { 'x-action': 'create-task' },
       });
 
       if (taskError) throw new Error(`Erro ao criar tarefa 3D: ${taskError.message}`);
@@ -119,18 +118,18 @@ export function usePipeline() {
 
       // Step 5: Poll for completion
       let attempts = 0;
-      const maxAttempts = 120; // 10 min max
-      
+      const maxAttempts = 120;
+
       while (attempts < maxAttempts) {
         if (abortRef.current) return;
-        
-        await new Promise(r => setTimeout(r, 5000)); // Poll every 5s
+
+        await new Promise(r => setTimeout(r, 5000));
         attempts++;
 
-        const { data: pollData, error: pollError } = await supabase.functions.invoke(
-          `generate-3d?action=poll&task_id=${taskId}`,
-          { method: 'GET' }
-        );
+        const { data: pollData, error: pollError } = await supabase.functions.invoke('generate-3d', {
+          body: { task_id: taskId },
+          headers: { 'x-action': 'poll' },
+        });
 
         if (pollError) {
           console.error('Poll error:', pollError);
@@ -140,13 +139,12 @@ export function usePipeline() {
         const status = pollData?.data?.status;
         const progress = pollData?.data?.progress || 0;
 
-        setState(prev => ({ ...prev, progress: Math.min(progress * 100, 95) }));
+        setState(prev => ({ ...prev, progress: Math.min(Math.round(progress * 100), 95) }));
 
         if (status === 'success') {
           const modelUrl = pollData?.data?.output?.model;
           if (!modelUrl) throw new Error('Modelo gerado mas URL não encontrada');
-          
-          // Also capture multi-view images if available
+
           const renderedImage = pollData?.data?.output?.rendered_image;
           if (renderedImage) {
             setState(prev => ({ ...prev, multiViewImages: [renderedImage] }));
