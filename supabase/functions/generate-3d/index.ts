@@ -84,7 +84,13 @@ serve(async (req) => {
 
     // Action: poll task status
     if (action === 'poll') {
-      const taskId = req.headers.get('x-task-id') || new URL(req.url).searchParams.get('task_id');
+      let taskId = req.headers.get('x-task-id') || new URL(req.url).searchParams.get('task_id');
+      if (!taskId) {
+        try {
+          const body = await req.json();
+          taskId = body.task_id;
+        } catch {}
+      }
       if (!taskId) {
         return new Response(JSON.stringify({ error: 'task_id required' }), {
           status: 400,
