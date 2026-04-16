@@ -24,12 +24,9 @@ const Index = () => {
       <header className="border-b border-border/50 backdrop-blur-sm sticky top-0 z-50 bg-background/80">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-glow"
-              style={{ background: 'var(--gradient-primary)' }}>
-              <Box className="w-5 h-5 text-primary-foreground" />
-            </div>
+            <img src="/logo.png" alt="PUB Modeler Logo" className="w-10 h-10 object-contain" />
             <div>
-              <h1 className="text-lg font-bold text-foreground">Mesh<span className="text-gradient">Forge</span></h1>
+              <h1 className="text-lg font-bold text-foreground">PUB <span className="text-gradient">Modeler</span></h1>
               <p className="text-xs text-muted-foreground">Imagem → Modelo 3D</p>
             </div>
           </div>
