@@ -181,8 +181,16 @@ export function usePipeline() {
         setState(prev => ({ ...prev, progress: Math.min(Math.round(progress * 100), 95) }));
 
         if (status === 'success') {
-          const modelUrl = pollData?.data?.output?.model;
-          if (!modelUrl) throw new Error('Modelo gerado mas URL não encontrada');
+          console.log('Tripo Success Data:', JSON.stringify(pollData, null, 2));
+          
+          // Tentar encontrar a URL em vários campos possíveis da v2
+          const output = pollData?.data?.output;
+          const modelUrl = output?.model || output?.glb || output?.url;
+          
+          if (!modelUrl) {
+            console.error('Output structure:', output);
+            throw new Error('Modelo gerado mas URL (model/glb) não encontrada no output');
+          }
 
           setState(prev => ({ ...prev, modelUrl, step: 'done', progress: 100 }));
           return;
