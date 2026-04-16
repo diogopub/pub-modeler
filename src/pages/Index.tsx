@@ -24,10 +24,12 @@ const Index = () => {
       <header className="border-b border-border/50 backdrop-blur-sm sticky top-0 z-50 bg-background/80">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="PUB Modeler Logo" className="w-10 h-10 object-contain" />
-            <div>
-              <h1 className="text-lg font-bold text-foreground">PUB <span className="text-gradient">Modeler</span></h1>
-              <p className="text-xs text-muted-foreground">Imagem → Modelo 3D</p>
+            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center p-1.5 shadow-sm">
+              <img src="/logo.png" alt="PUB Logo" className="w-full h-full object-contain" />
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-[1.2rem] font-bold text-[#E5E7EB] leading-tight">Modeler <span className="text-white">PUB</span></h1>
+              <p className="text-[0.8rem] text-muted-foreground/80 font-medium">Imagem → Modelo 3D</p>
             </div>
           </div>
           {state.step !== 'idle' && (

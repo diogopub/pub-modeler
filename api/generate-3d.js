@@ -97,6 +97,22 @@ export default async function (req, res) {
       return res.status(200).json(response.data);
     }
 
+    if (action === "proxy-model") {
+      const { url } = req.body;
+      if (!url || !url.includes("tripo")) {
+        return res.status(400).json({ error: 'URL inválida ou não autorizada' });
+      }
+
+      const response = await axios.get(url, {
+        responseType: 'arraybuffer',
+        headers: { "Authorization": `Bearer ${tripoKey}` }
+      });
+
+      res.setHeader('Content-Type', 'model/gltf-binary');
+      res.setHeader('Content-Disposition', 'attachment; filename="model.glb"');
+      return res.status(200).send(Buffer.from(response.data));
+    }
+
     res.status(400).json({ error: 'Invalid action' });
     
   } catch (error) {

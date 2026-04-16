@@ -184,13 +184,27 @@ export function usePipeline() {
           console.log('Tripo Success Data:', JSON.stringify(pollData, null, 2));
           
           const output = pollData?.data?.output;
-          // pbr_model é o campo correto da v2 para alta qualidade
-          const modelUrl = output?.pbr_model || output?.model || output?.glb || output?.url;
+          const rawUrl = output?.pbr_model || output?.model || output?.glb || output?.url;
           
-          if (!modelUrl) {
+          if (!rawUrl) {
             console.error('Output structure:', output);
             throw new Error('Modelo gerado mas URL (pbr_model) não encontrada no output');
           }
+
+          // Busca pelo proxy para evitar CORS
+          setState(prev => ({ ...prev, progress: 98 })); // Pequeno delay no download
+          const proxyResponse = await fetch('/api/generate-3d', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'proxy-model', url: rawUrl })
+          });
+
+          if (!proxyResponse.ok) {
+            throw new Error('Erro ao baixar modelo pelo proxy (CORS bypass)');
+          }
+
+          const blob = await proxyResponse.blob();
+          const modelUrl = URL.createObjectURL(blob); 
 
           // Atualizar as imagens de preview com o render final se disponível
           if (output?.rendered_image) {
