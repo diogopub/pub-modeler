@@ -1,7 +1,7 @@
-const axios = require('axios');
-const FormData = require('form-data');
+import axios from 'axios';
+import FormData from 'form-data';
 
-module.exports = async (req, res) => {
+export default async function (req, res) {
   // CORS Headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,7 +16,6 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // Aumentar o limite de log para depuração
   console.log('Recebida requisição para remove-bg. Action:', req.body?.action || 'default');
 
   try {
@@ -54,9 +53,9 @@ module.exports = async (req, res) => {
     console.error('remove-bg error:', error.message);
     res.status(500).json({ error: 'Erro interno na API de remoção de fundo: ' + error.message });
   }
-};
+}
 
-// Exportar configuração para a Vercel aceitar payloads maiores
+// Configuração para a Vercel
 export const config = {
   api: {
     bodyParser: {

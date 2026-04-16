@@ -1,7 +1,7 @@
-const axios = require('axios');
-const FormData = require('form-data');
+import axios from 'axios';
+import FormData from 'form-data';
 
-module.exports = async (req, res) => {
+export default async function (req, res) {
   // CORS Headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,6 +15,8 @@ module.exports = async (req, res) => {
     res.status(200).end();
     return;
   }
+
+  console.log('Recebida requisição para generate-3d. Action:', req.body?.action);
 
   try {
     const { action } = req.body;
@@ -73,6 +75,15 @@ module.exports = async (req, res) => {
     
   } catch (error) {
     console.error('generate-3d error:', error.message);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Erro interno na API Tripo: ' + error.message });
   }
+}
+
+// Configuração para aumentar limite de tamanho na Vercel
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
 };
