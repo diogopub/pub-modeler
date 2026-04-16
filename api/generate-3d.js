@@ -53,7 +53,7 @@ export default async function (req, res) {
         type: "image_to_multiview",
         file: {
           type: "image",
-          file_token: fileToken // Erro de variável aqui? Vou corrigir para file_token
+          file_token: file_token
         }
       }, { headers: tripoHeaders });
       return res.status(200).json(response.data);
