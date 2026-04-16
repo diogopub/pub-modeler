@@ -25,7 +25,7 @@ const Index = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center p-1.5 shadow-sm">
-              <img src="/logo.png" alt="PUB Logo" className="w-full h-full object-contain" />
+              <img src="/logo.svg" alt="PUB Logo" className="w-full h-full object-contain" />
             </div>
             <div className="flex flex-col">
               <h1 className="text-[1.2rem] font-bold text-[#E5E7EB] leading-tight">Modeler <span className="text-white">PUB</span></h1>
@@ -54,8 +54,8 @@ const Index = () => {
               <span className="text-gradient">modelos 3D</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Faça upload de uma imagem e nossa IA remove o fundo, gera múltiplas vistas
-              e cria um modelo 3D pronto para download.
+              Faça upload de uma imagem e nossa IA gera um modelo 3D com texturas
+              e materiais PBR, pronto para download.
             </p>
           </div>
         )}

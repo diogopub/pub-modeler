@@ -1,4 +1,4 @@
-export type PipelineStep = 'idle' | 'uploading' | 'removing-bg' | 'multi-view' | 'generating-3d' | 'done' | 'error';
+export type PipelineStep = 'idle' | 'uploading' | 'generating-3d' | 'done' | 'error';
 
 export interface PipelineState {
   step: PipelineStep;
@@ -15,17 +15,13 @@ export interface PipelineState {
 export const STEP_LABELS: Record<PipelineStep, string> = {
   idle: 'Aguardando imagem',
   uploading: 'Enviando imagem...',
-  'removing-bg': 'Removendo fundo...',
-  'multi-view': 'Gerando vistas...',
-  'generating-3d': 'Criando modelo 3D...',
+  'generating-3d': 'Gerando modelo 3D...',
   done: 'Modelo pronto!',
   error: 'Erro no processamento',
 };
 
 export const STEPS_ORDER: PipelineStep[] = [
   'uploading',
-  'removing-bg',
-  'multi-view',
   'generating-3d',
   'done',
 ];

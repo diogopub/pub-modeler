@@ -130,7 +130,7 @@ export function ModelViewer({ modelUrl, className = '' }: ModelViewerProps) {
           </Suspense>
           <OrbitControls
             enablePan={false}
-            minDistance={2}
+            minDistance={0.5}
             maxDistance={8}
             autoRotate={!modelUrl}
             autoRotateSpeed={1}
