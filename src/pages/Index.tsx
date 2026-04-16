@@ -96,27 +96,23 @@ const Index = () => {
                 </div>
               )}
 
-              {/* Multi-View Images (The key intermediate output) */}
-              <div className={`rounded-2xl border border-border overflow-hidden bg-card p-4 transition-all lg:col-span-2 ${state.step === 'multi-view' ? 'border-primary shadow-glow' : ''}`}>
+              {/* Preview renderizado pela IA */}
+              <div className={`rounded-2xl border border-border overflow-hidden bg-card p-4 transition-all lg:col-span-2 ${state.step === 'generating-3d' ? 'border-primary shadow-glow' : ''}`}>
                 <p className="text-xs text-muted-foreground font-semibold uppercase tracking-widest mb-3 flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${state.multiViewImages.length > 0 ? 'bg-green-500' : 'bg-orange-500 animate-pulse'}`} />
-                  Vistas IA (Multi-View)
+                  Preview IA
                 </p>
                 {state.multiViewImages.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-3">
-                    {state.multiViewImages.map((img, i) => (
-                      <div key={i} className="relative group overflow-hidden rounded-xl bg-muted/30">
-                        <img
-                          src={img}
-                          alt={`Vista ${i + 1}`}
-                          className="w-full h-32 object-contain transition-transform group-hover:scale-105"
-                        />
-                      </div>
-                    ))}
+                  <div className="rounded-xl overflow-hidden bg-muted/30">
+                    <img
+                      src={state.multiViewImages[state.multiViewImages.length - 1]}
+                      alt="Preview do modelo"
+                      className="w-full h-48 object-contain"
+                    />
                   </div>
                 ) : (
-                  <div className="h-32 flex items-center justify-center text-muted-foreground text-sm italic">
-                    Aguardando a IA gerar as vistas...
+                  <div className="h-48 flex items-center justify-center text-muted-foreground text-sm italic">
+                    Aguardando a IA processar...
                   </div>
                 )}
               </div>
@@ -163,12 +159,11 @@ const Index = () => {
 
         {/* Pipeline info - only when idle */}
         {state.step === 'idle' && (
-          <div className="mt-16 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
               { step: '1', title: 'Upload', desc: 'Envie a foto do objeto' },
-              { step: '2', title: 'Remoção de Fundo', desc: 'IA isola o objeto' },
-              { step: '3', title: 'Multi-View', desc: 'Gera vistas extras' },
-              { step: '4', title: 'Modelo 3D', desc: 'Tripo AI gera o 3D' },
+              { step: '2', title: 'Geração 3D', desc: 'IA cria o modelo com texturas' },
+              { step: '3', title: 'Visualização', desc: 'Explore e baixe o resultado' },
             ].map((item) => (
               <div
                 key={item.step}
