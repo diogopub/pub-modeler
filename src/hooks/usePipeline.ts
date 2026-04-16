@@ -67,7 +67,7 @@ export function usePipeline() {
       if (abortRef.current) return;
 
       // Step 2: Upload direto para Tripo
-      setState(prev => ({ ...prev, step: 'multi-view', progress: 5 }));
+      setState(prev => ({ ...prev, step: 'uploading', progress: 20 }));
 
       const uploadResponse = await fetch('/api/generate-3d', {
         method: 'POST',
@@ -84,56 +84,9 @@ export function usePipeline() {
       const fileToken = uploadData?.data?.image_token;
       if (!fileToken) throw new Error('Não recebeu file_token do Tripo');
 
-      // Step 3: Criar tarefa de Multi-view
-      setState(prev => ({ ...prev, step: 'multi-view', progress: 10 }));
-      const mvTaskResponse = await fetch('/api/generate-3d', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'create-multiview', file_token: fileToken })
-      });
-
-      if (!mvTaskResponse.ok) {
-        const err = await mvTaskResponse.json();
-        throw new Error(err.error || 'Erro ao criar vistas complementares');
-      }
-
-      const mvTaskData = await mvTaskResponse.json();
-      const mvTaskId = mvTaskData?.data?.task_id;
-      if (!mvTaskId) throw new Error('Não recebeu task_id das vistas');
-
-      // Pooling das Multi-views
-      let mvComplete = false;
-      let mvAttempts = 0;
-      let mvImages: string[] = [];
-      
-      while (!mvComplete && mvAttempts < 60) {
-        if (abortRef.current) return;
-        await new Promise(r => setTimeout(r, 4000));
-        mvAttempts++;
-        
-        const pollResponse = await fetch('/api/generate-3d', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'poll', task_id: mvTaskId })
-        });
-        
-        if (!pollResponse.ok) continue;
-        const pollData = await pollResponse.json();
-        const status = pollData?.data?.status;
-        
-        if (status === 'success') {
-          mvImages = [pollData?.data?.output?.rendered_image];
-          setState(prev => ({ ...prev, multiViewImages: mvImages, progress: 100 }));
-          mvComplete = true;
-        } else if (status === 'failed') {
-          throw new Error('A geração das vistas complementares falhou no Tripo');
-        }
-      }
-
-      if (!mvComplete) throw new Error('Timeout na geração das vistas');
       if (abortRef.current) return;
 
-      // Step 4: Criar tarefa 3D a partir das Multi-views
+      // Step 3: Criar tarefa 3D (modo direto — melhor fidelidade à imagem original)
       setState(prev => ({ ...prev, step: 'generating-3d', progress: 5 }));
 
       const taskResponse = await fetch('/api/generate-3d', {
@@ -141,8 +94,8 @@ export function usePipeline() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: 'create-task', 
-          original_task_id: mvTaskId,
-          file_token: fileToken 
+          file_token: fileToken,
+          mode: 'direct'
         })
       });
       

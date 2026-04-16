@@ -60,21 +60,34 @@ export default async function (req, res) {
     }
 
     if (action === "create-task") {
-      const { original_task_id, file_token } = req.body;
+      const { original_task_id, file_token, mode } = req.body;
       
       let taskPayload;
-      if (original_task_id) {
+      if (mode === 'direct' && file_token) {
+        // Modo direto: pula multiview, manda a imagem original direto
+        taskPayload = {
+          type: "image_to_model",
+          file: { type: "image", file_token: file_token },
+          model_version: "default",
+          texture: true,
+          pbr: true
+        };
+      } else if (original_task_id) {
+        // Modo multiview: usa as vistas geradas
         taskPayload = {
           type: "multiview_to_model",
-          original_task_id: original_task_id
+          original_task_id: original_task_id,
+          model_version: "default",
+          texture: true,
+          pbr: true
         };
       } else {
         taskPayload = {
           type: "image_to_model",
-          file: {
-            type: "image",
-            file_token: file_token
-          }
+          file: { type: "image", file_token: file_token },
+          model_version: "default",
+          texture: true,
+          pbr: true
         };
       }
 
