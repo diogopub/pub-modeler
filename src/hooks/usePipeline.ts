@@ -49,7 +49,6 @@ export function usePipeline() {
       // Step 2: Remove background
       setState(prev => ({ ...prev, step: 'removing-bg', progress: 10 }));
 
-      // Convert file to base64 for Vercel Function
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve, reject) => {
         reader.onload = () => resolve(reader.result as string);
@@ -80,7 +79,7 @@ export function usePipeline() {
       if (abortRef.current) return;
 
       // Step 3: Upload to Tripo
-      setState(prev => ({ ...prev, step: 'multi-view', progress: 20 }));
+      setState(prev => ({ ...prev, step: 'multi-view', progress: 5 }));
 
       const noBgReader = new FileReader();
       const noBgBase64Promise = new Promise<string>((resolve, reject) => {
@@ -102,22 +101,69 @@ export function usePipeline() {
       }
       
       const uploadData = await uploadResponse.json();
-
       const fileToken = uploadData?.data?.image_token;
-      if (!fileToken) {
-        throw new Error('Não recebeu file_token do Tripo');
+      if (!fileToken) throw new Error('Não recebeu file_token do Tripo');
+
+      // Step 4: Create Multiview Task
+      setState(prev => ({ ...prev, step: 'multi-view', progress: 10 }));
+      const mvTaskResponse = await fetch('/api/generate-3d', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create-multiview', file_token: fileToken })
+      });
+
+      if (!mvTaskResponse.ok) {
+        const err = await mvTaskResponse.json();
+        throw new Error(err.error || 'Erro ao criar vistas complementares');
       }
 
-      setState(prev => ({ ...prev, progress: 60 }));
+      const mvTaskData = await mvTaskResponse.json();
+      const mvTaskId = mvTaskData?.data?.task_id;
+      if (!mvTaskId) throw new Error('Não recebeu task_id das vistas');
+
+      // Poll for Multiview
+      let mvComplete = false;
+      let mvAttempts = 0;
+      let mvImages: string[] = [];
+      
+      while (!mvComplete && mvAttempts < 60) {
+        if (abortRef.current) return;
+        await new Promise(r => setTimeout(r, 4000));
+        mvAttempts++;
+        
+        const pollResponse = await fetch('/api/generate-3d', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'poll', task_id: mvTaskId })
+        });
+        
+        if (!pollResponse.ok) continue;
+        const pollData = await pollResponse.json();
+        const status = pollData?.data?.status;
+        
+        if (status === 'success') {
+          mvImages = [pollData?.data?.output?.rendered_image];
+          setState(prev => ({ ...prev, multiViewImages: mvImages, progress: 100 }));
+          mvComplete = true;
+        } else if (status === 'failed') {
+          throw new Error('A geração das vistas complementares falhou');
+        }
+      }
+
+      if (!mvComplete) throw new Error('Timeout na geração das vistas');
       if (abortRef.current) return;
 
-      // Step 4: Create 3D generation task
+      // Step 5: Create 3D generation task (using Multiview)
       setState(prev => ({ ...prev, step: 'generating-3d', progress: 5 }));
 
       const taskResponse = await fetch('/api/generate-3d', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'create-task', file_token: fileToken })
+        body: JSON.stringify({ 
+          action: 'create-task', 
+          original_task_id: mvTaskId, // Alta fidelidade usando as vistas
+          file_token: fileToken 
+        })
       });
       
       if (!taskResponse.ok) {
@@ -126,15 +172,12 @@ export function usePipeline() {
       }
       
       const taskData = await taskResponse.json();
-
       const taskId = taskData?.data?.task_id;
-      if (!taskId) {
-        throw new Error('Não recebeu task_id do Tripo');
-      }
+      if (!taskId) throw new Error('Não recebeu task_id do Tripo');
 
       setState(prev => ({ ...prev, taskId }));
 
-      // Step 5: Poll for completion
+      // Step 6: Poll for 3D completion
       let attempts = 0;
       const maxAttempts = 120;
 
@@ -161,11 +204,6 @@ export function usePipeline() {
         if (status === 'success') {
           const modelUrl = pollData?.data?.output?.model;
           if (!modelUrl) throw new Error('Modelo gerado mas URL não encontrada');
-
-          const renderedImage = pollData?.data?.output?.rendered_image;
-          if (renderedImage) {
-            setState(prev => ({ ...prev, multiViewImages: [renderedImage] }));
-          }
 
           setState(prev => ({
             ...prev,

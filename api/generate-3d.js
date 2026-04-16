@@ -16,8 +16,6 @@ export default async function (req, res) {
     return;
   }
 
-  console.log('Recebida requisição para generate-3d. Action:', req.body?.action);
-
   try {
     const { action } = req.body;
     const tripoKey = process.env.TRIPO_API_KEY;
@@ -49,12 +47,31 @@ export default async function (req, res) {
       return res.status(200).json(response.data);
     }
 
-    if (action === "create-task") {
+    // NOVA AÇÃO: Gerar Vistas (Multi-view)
+    if (action === "create-multiview") {
       const { file_token } = req.body;
       const response = await axios.post(`${TRIPO_BASE}/task`, {
-        type: "image_to_model",
+        type: "image_to_multiview",
         file: { type: "image", file_token },
       }, {
+        headers: {
+          ...tripoHeaders,
+          "Content-Type": "application/json",
+        },
+      });
+      return res.status(200).json(response.data);
+    }
+
+    // AÇÃO ATUALIZADA: Gerar Modelo 3D a partir das vistas
+    if (action === "create-task") {
+      const { original_task_id, file_token } = req.body;
+      
+      // Se tivermos um ID de tarefa de multiview anterior, usamos ele para melhor qualidade
+      const body = original_task_id 
+        ? { type: "multiview_to_model", original_task_id }
+        : { type: "image_to_model", file: { type: "image", file_token } };
+
+      const response = await axios.post(`${TRIPO_BASE}/task`, body, {
         headers: {
           ...tripoHeaders,
           "Content-Type": "application/json",
@@ -74,12 +91,24 @@ export default async function (req, res) {
     res.status(400).json({ error: 'Invalid action' });
     
   } catch (error) {
-    console.error('generate-3d error:', error.message);
-    res.status(500).json({ error: 'Erro interno na API Tripo: ' + error.message });
+    console.error('generate-3d error:', error.response?.data || error.message);
+    
+    // Tratamento especial para erro 403 (provavelmente créditos)
+    if (error.response?.status === 403) {
+      const tripoError = error.response?.data?.message || "";
+      let msg = "Erro 403 na Tripo: Acesso Negado.";
+      if (tripoError.toLowerCase().includes("balance") || tripoError.toLowerCase().includes("credit")) {
+        msg = "Saldo insuficiente na Tripo 3D. Verifique seus créditos.";
+      } else {
+        msg = "Chave de API da Tripo inválida ou bloqueada.";
+      }
+      return res.status(403).json({ error: msg, details: tripoError });
+    }
+
+    res.status(500).json({ error: 'Erro na API Tripo: ' + (error.response?.data?.message || error.message) });
   }
 }
 
-// Configuração para aumentar limite de tamanho na Vercel
 export const config = {
   api: {
     bodyParser: {
