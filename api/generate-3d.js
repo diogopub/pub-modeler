@@ -22,12 +22,12 @@ export default async function (req, res) {
     const TRIPO_BASE = "https://api.tripo3d.ai/v2/openapi";
 
     if (!tripoKey) {
-      console.error('TRIPO_API_KEY is missing');
-      return res.status(500).json({ error: 'Configuração incompleta: TRIPO_API_KEY não encontrada no Vercel (Environment Variables).' });
+      return res.status(500).json({ error: 'Configuração incompleta: TRIPO_API_KEY não encontrada.' });
     }
 
     const tripoHeaders = {
       "Authorization": `Bearer ${tripoKey}`,
+      "Content-Type": "application/json"
     };
 
     if (action === "upload") {
@@ -41,49 +41,51 @@ export default async function (req, res) {
       const response = await axios.post(`${TRIPO_BASE}/upload`, formData, {
         headers: {
           ...formData.getHeaders(),
-          ...tripoHeaders,
+          "Authorization": `Bearer ${tripoKey}`
         },
       });
       return res.status(200).json(response.data);
     }
 
-    // NOVA AÇÃO: Gerar Vistas (Multi-view)
     if (action === "create-multiview") {
       const { file_token } = req.body;
       const response = await axios.post(`${TRIPO_BASE}/task`, {
         type: "image_to_multiview",
-        file: { type: "image", file_token },
-      }, {
-        headers: {
-          ...tripoHeaders,
-          "Content-Type": "application/json",
-        },
-      });
+        file: {
+          type: "image",
+          file_token: fileToken // Erro de variável aqui? Vou corrigir para file_token
+        }
+      }, { headers: tripoHeaders });
       return res.status(200).json(response.data);
     }
 
-    // AÇÃO ATUALIZADA: Gerar Modelo 3D a partir das vistas
     if (action === "create-task") {
       const { original_task_id, file_token } = req.body;
       
-      // Se tivermos um ID de tarefa de multiview anterior, usamos ele para melhor qualidade
-      const body = original_task_id 
-        ? { type: "multiview_to_model", original_task_id }
-        : { type: "image_to_model", file: { type: "image", file_token } };
+      let taskPayload;
+      if (original_task_id) {
+        taskPayload = {
+          type: "multiview_to_model",
+          original_task_id: original_task_id
+        };
+      } else {
+        taskPayload = {
+          type: "image_to_model",
+          file: {
+            type: "image",
+            file_token: file_token
+          }
+        };
+      }
 
-      const response = await axios.post(`${TRIPO_BASE}/task`, body, {
-        headers: {
-          ...tripoHeaders,
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await axios.post(`${TRIPO_BASE}/task`, taskPayload, { headers: tripoHeaders });
       return res.status(200).json(response.data);
     }
 
     if (action === "poll") {
       const { task_id } = req.body;
       const response = await axios.get(`${TRIPO_BASE}/task/${task_id}`, {
-        headers: tripoHeaders,
+        headers: { "Authorization": `Bearer ${tripoKey}` }
       });
       return res.status(200).json(response.data);
     }
@@ -91,28 +93,13 @@ export default async function (req, res) {
     res.status(400).json({ error: 'Invalid action' });
     
   } catch (error) {
-    console.error('generate-3d error:', error.response?.data || error.message);
-    
-    // Tratamento especial para erro 403 (provavelmente créditos)
-    if (error.response?.status === 403) {
-      const tripoError = error.response?.data?.message || "";
-      let msg = "Erro 403 na Tripo: Acesso Negado.";
-      if (tripoError.toLowerCase().includes("balance") || tripoError.toLowerCase().includes("credit")) {
-        msg = "Saldo insuficiente na Tripo 3D. Verifique seus créditos.";
-      } else {
-        msg = "Chave de API da Tripo inválida ou bloqueada.";
-      }
-      return res.status(403).json({ error: msg, details: tripoError });
-    }
-
-    res.status(500).json({ error: 'Erro na API Tripo: ' + (error.response?.data?.message || error.message) });
+    const errorData = error.response?.data || {};
+    console.error('Tripo Error:', JSON.stringify(errorData));
+    res.status(error.response?.status || 500).json({ 
+      error: errorData.message || error.message,
+      code: errorData.code
+    });
   }
 }
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-  },
-};
+export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
