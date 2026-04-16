@@ -42,6 +42,13 @@ export function usePipeline() {
     abortRef.current = false;
 
     try {
+      // Diagnostic: Check Balance
+      fetch('/api/generate-3d', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get-balance' })
+      }).then(res => res.json()).then(data => console.log('Tripo Balance Check:', data));
+
       // Step 1: Mostrar imagem original e preparar
       const imageUrl = URL.createObjectURL(file);
       setState(prev => ({ ...prev, originalImage: imageUrl, step: 'uploading', progress: 50 }));

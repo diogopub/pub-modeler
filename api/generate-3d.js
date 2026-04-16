@@ -90,6 +90,13 @@ export default async function (req, res) {
       return res.status(200).json(response.data);
     }
 
+    if (action === "get-balance") {
+      const response = await axios.get(`${TRIPO_BASE}/user/balance`, {
+        headers: { "Authorization": `Bearer ${tripoKey}` }
+      });
+      return res.status(200).json(response.data);
+    }
+
     res.status(400).json({ error: 'Invalid action' });
     
   } catch (error) {
