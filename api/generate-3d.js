@@ -50,7 +50,7 @@ export default async function (req, res) {
     if (action === "create-multiview") {
       const { file_token } = req.body;
       const response = await axios.post(`${TRIPO_BASE}/task`, {
-        type: "image_to_multiview",
+        type: "generate_multiview_image",
         file: {
           type: "image",
           file_token: file_token
