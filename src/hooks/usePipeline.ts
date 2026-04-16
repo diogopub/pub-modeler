@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
 import { PipelineState, PipelineStep } from '@/types/pipeline';
-import { supabase } from '@/integrations/supabase/client';
 
 const initialState: PipelineState = {
   step: 'idle',
@@ -50,53 +49,62 @@ export function usePipeline() {
       // Step 2: Remove background
       setState(prev => ({ ...prev, step: 'removing-bg', progress: 10 }));
 
-      const removeBgForm = new FormData();
-      removeBgForm.append('image', file);
+      // Convert file to base64 for Vercel Function
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const base64Image = await base64Promise;
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/remove-bg`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: removeBgForm,
-        }
-      );
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Erro ao remover fundo: ${errText}`);
+      const removeBgResponse = await fetch('/api/remove-bg', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image })
+      });
+      
+      if (!removeBgResponse.ok) {
+        const err = await removeBgResponse.json();
+        throw new Error(err.error || 'Erro ao remover fundo');
       }
-
-      const removeBgData = await response.blob();
+      
+      const removeBgResult = await removeBgResponse.json();
 
       if (abortRef.current) return;
 
-      const noBgBlob = removeBgData;
-
+      const noBgBlob = await (await fetch(removeBgResult.url)).blob();
       const noBgUrl = URL.createObjectURL(noBgBlob);
       setState(prev => ({ ...prev, noBgImage: noBgUrl, progress: 100 }));
+
       if (abortRef.current) return;
 
       // Step 3: Upload to Tripo
       setState(prev => ({ ...prev, step: 'multi-view', progress: 20 }));
 
-      const noBgFile = new File([noBgBlob], 'no-bg.png', { type: 'image/png' });
-      const uploadForm = new FormData();
-      uploadForm.append('image', noBgFile);
-
-      const { data: uploadData, error: uploadError } = await supabase.functions.invoke('generate-3d', {
-        body: uploadForm,
-        headers: { 'x-action': 'upload' },
+      const noBgReader = new FileReader();
+      const noBgBase64Promise = new Promise<string>((resolve, reject) => {
+        noBgReader.onload = () => resolve(noBgReader.result as string);
+        noBgReader.onerror = reject;
+        noBgReader.readAsDataURL(noBgBlob);
       });
+      const noBgBase64 = await noBgBase64Promise;
 
-      if (uploadError) throw new Error(`Erro no upload Tripo: ${uploadError.message}`);
+      const uploadResponse = await fetch('/api/generate-3d', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'upload', image: noBgBase64 })
+      });
+      
+      if (!uploadResponse.ok) {
+        const err = await uploadResponse.json();
+        throw new Error(err.error || 'Erro no upload Tripo');
+      }
+      
+      const uploadData = await uploadResponse.json();
 
       const fileToken = uploadData?.data?.image_token;
       if (!fileToken) {
-        console.error('Upload response:', uploadData);
         throw new Error('Não recebeu file_token do Tripo');
       }
 
@@ -106,16 +114,21 @@ export function usePipeline() {
       // Step 4: Create 3D generation task
       setState(prev => ({ ...prev, step: 'generating-3d', progress: 5 }));
 
-      const { data: taskData, error: taskError } = await supabase.functions.invoke('generate-3d', {
-        body: { file_token: fileToken },
-        headers: { 'x-action': 'create-task' },
+      const taskResponse = await fetch('/api/generate-3d', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create-task', file_token: fileToken })
       });
-
-      if (taskError) throw new Error(`Erro ao criar tarefa 3D: ${taskError.message}`);
+      
+      if (!taskResponse.ok) {
+        const err = await taskResponse.json();
+        throw new Error(err.error || 'Erro ao criar tarefa 3D');
+      }
+      
+      const taskData = await taskResponse.json();
 
       const taskId = taskData?.data?.task_id;
       if (!taskId) {
-        console.error('Task response:', taskData);
         throw new Error('Não recebeu task_id do Tripo');
       }
 
@@ -131,16 +144,15 @@ export function usePipeline() {
         await new Promise(r => setTimeout(r, 5000));
         attempts++;
 
-        const { data: pollData, error: pollError } = await supabase.functions.invoke('generate-3d', {
-          body: { task_id: taskId },
-          headers: { 'x-action': 'poll' },
+        const pollResponse = await fetch('/api/generate-3d', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'poll', task_id: taskId })
         });
-
-        if (pollError) {
-          console.error('Poll error:', pollError);
-          continue;
-        }
-
+        
+        if (!pollResponse.ok) continue;
+        
+        const pollData = await pollResponse.json();
         const status = pollData?.data?.status;
         const progress = pollData?.data?.progress || 0;
 
