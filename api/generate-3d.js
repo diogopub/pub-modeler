@@ -22,7 +22,8 @@ module.exports = async (req, res) => {
     const TRIPO_BASE = "https://api.tripo3d.ai/v2/openapi";
 
     if (!tripoKey) {
-      return res.status(500).json({ error: 'TRIPO_API_KEY not configured' });
+      console.error('TRIPO_API_KEY is missing');
+      return res.status(500).json({ error: 'Configuração incompleta: TRIPO_API_KEY não encontrada no Vercel (Environment Variables).' });
     }
 
     const tripoHeaders = {

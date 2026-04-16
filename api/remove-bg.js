@@ -21,7 +21,12 @@ module.exports = async (req, res) => {
     const apiKey = process.env.REMOVEBG_API_KEY;
 
     if (!apiKey) {
-      return res.status(500).json({ error: 'REMOVEBG_API_KEY not configured' });
+      console.error('REMOVEBG_API_KEY is missing');
+      return res.status(500).json({ error: 'Configuração incompleta: REMOVEBG_API_KEY não encontrada no Vercel.' });
+    }
+
+    if (!image) {
+      return res.status(400).json({ error: 'Nenhuma imagem enviada.' });
     }
 
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
