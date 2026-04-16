@@ -7,12 +7,6 @@ function ModelMesh({ url }: { url: string }) {
   const { scene } = useGLTF(url);
   const ref = useRef<THREE.Group>(null);
 
-  useFrame((_, delta) => {
-    if (ref.current) {
-      ref.current.rotation.y += delta * 0.3;
-    }
-  });
-
   return (
     <Center>
       <group ref={ref}>

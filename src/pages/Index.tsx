@@ -77,13 +77,14 @@ const Index = () => {
 
         {/* Preview grid during processing */}
         {state.step !== 'idle' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* Left: images */}
-            <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-8 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Original Image */}
               {state.originalImage && (
-                <div className="rounded-2xl border border-border overflow-hidden bg-card p-4">
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-3">
-                    Imagem Original
+                <div className="rounded-2xl border border-border overflow-hidden bg-card p-4 transition-all hover:border-primary/30">
+                  <p className="text-xs text-muted-foreground font-semibold uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    Entrada Original
                   </p>
                   <img
                     src={state.originalImage}
@@ -93,45 +94,48 @@ const Index = () => {
                 </div>
               )}
 
-              {state.noBgImage && (
-                <div className="rounded-2xl border border-border overflow-hidden bg-card p-4">
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-3">
-                    Sem Fundo
-                  </p>
-                  <div className="bg-[repeating-conic-gradient(hsl(var(--muted))_0%_25%,transparent_0%_50%)] bg-[length:16px_16px] rounded-xl">
-                    <img
-                      src={state.noBgImage}
-                      alt="Sem fundo"
-                      className="w-full h-48 object-contain"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {state.multiViewImages.length > 0 && (
-                <div className="rounded-2xl border border-border overflow-hidden bg-card p-4">
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-3">
-                    Multi-View
-                  </p>
-                  <div className="grid grid-cols-3 gap-2">
+              {/* Multi-View Images (The key intermediate output) */}
+              <div className={`rounded-2xl border border-border overflow-hidden bg-card p-4 transition-all lg:col-span-2 ${state.step === 'multi-view' ? 'border-primary shadow-glow' : ''}`}>
+                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${state.multiViewImages.length > 0 ? 'bg-green-500' : 'bg-orange-500 animate-pulse'}`} />
+                  Vistas IA (Multi-View)
+                </p>
+                {state.multiViewImages.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-3">
                     {state.multiViewImages.map((img, i) => (
-                      <img
-                        key={i}
-                        src={img}
-                        alt={`Vista ${i + 1}`}
-                        className="w-full h-24 object-contain rounded-lg bg-muted/30"
-                      />
+                      <div key={i} className="relative group overflow-hidden rounded-xl bg-muted/30">
+                        <img
+                          src={img}
+                          alt={`Vista ${i + 1}`}
+                          className="w-full h-32 object-contain transition-transform group-hover:scale-105"
+                        />
+                      </div>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="h-32 flex items-center justify-center text-muted-foreground text-sm italic">
+                    Aguardando a IA gerar as vistas...
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Right: 3D viewer */}
-            <div className="min-h-[400px]">
-              <Suspense fallback={<div className="h-full rounded-2xl bg-muted/30 border border-border flex items-center justify-center text-muted-foreground">Carregando visualizador 3D...</div>}>
-                <ModelViewer modelUrl={state.modelUrl} className="h-full" />
-              </Suspense>
+            {/* 3D Model Viewer - Bigger and more prominent */}
+            <div className={`rounded-2xl border border-border overflow-hidden bg-card p-1 transition-all min-h-[500px] ${state.step === 'done' ? 'border-green-500/50' : ''}`}>
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-widest flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${state.step === 'done' ? 'bg-green-500' : 'bg-primary animate-pulse'}`} />
+                  Visualizador 3D
+                </p>
+                {state.step === 'done' && (
+                  <span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded-full font-bold">READY</span>
+                )}
+              </div>
+              <div className="h-[450px]">
+                <Suspense fallback={<div className="h-full flex items-center justify-center text-muted-foreground italic">Carregando motor 3D...</div>}>
+                  <ModelViewer modelUrl={state.modelUrl} className="h-full border-0 rounded-none bg-transparent" />
+                </Suspense>
+              </div>
             </div>
           </div>
         )}
