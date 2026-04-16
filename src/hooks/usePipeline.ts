@@ -183,13 +183,21 @@ export function usePipeline() {
         if (status === 'success') {
           console.log('Tripo Success Data:', JSON.stringify(pollData, null, 2));
           
-          // Tentar encontrar a URL em vários campos possíveis da v2
           const output = pollData?.data?.output;
-          const modelUrl = output?.model || output?.glb || output?.url;
+          // pbr_model é o campo correto da v2 para alta qualidade
+          const modelUrl = output?.pbr_model || output?.model || output?.glb || output?.url;
           
           if (!modelUrl) {
             console.error('Output structure:', output);
-            throw new Error('Modelo gerado mas URL (model/glb) não encontrada no output');
+            throw new Error('Modelo gerado mas URL (pbr_model) não encontrada no output');
+          }
+
+          // Atualizar as imagens de preview com o render final se disponível
+          if (output?.rendered_image) {
+            setState(prev => ({ 
+              ...prev, 
+              multiViewImages: [...prev.multiViewImages, output.rendered_image]
+            }));
           }
 
           setState(prev => ({ ...prev, modelUrl, step: 'done', progress: 100 }));
