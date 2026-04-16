@@ -47,7 +47,10 @@ export function usePipeline() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'get-balance' })
-      }).then(res => res.json()).then(data => console.log('Tripo Balance Check:', data));
+      }).then(res => res.json()).then(data => {
+        console.log('--- Tripo API Info ---');
+        console.log('Balance Status:', JSON.stringify(data, null, 2));
+      });
 
       // Step 1: Mostrar imagem original e preparar
       const imageUrl = URL.createObjectURL(file);
