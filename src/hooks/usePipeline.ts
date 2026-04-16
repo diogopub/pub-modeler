@@ -42,12 +42,9 @@ export function usePipeline() {
     abortRef.current = false;
 
     try {
-      // Step 1: Show original image
+      // Step 1: Mostrar imagem original e preparar
       const imageUrl = URL.createObjectURL(file);
       setState(prev => ({ ...prev, originalImage: imageUrl, step: 'uploading', progress: 50 }));
-
-      // Step 2: Remove background
-      setState(prev => ({ ...prev, step: 'removing-bg', progress: 10 }));
 
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve, reject) => {
@@ -57,42 +54,15 @@ export function usePipeline() {
       });
       const base64Image = await base64Promise;
 
-      const removeBgResponse = await fetch('/api/remove-bg', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Image })
-      });
-      
-      if (!removeBgResponse.ok) {
-        const err = await removeBgResponse.json();
-        throw new Error(err.error || 'Erro ao remover fundo');
-      }
-      
-      const removeBgResult = await removeBgResponse.json();
-
       if (abortRef.current) return;
 
-      const noBgBlob = await (await fetch(removeBgResult.url)).blob();
-      const noBgUrl = URL.createObjectURL(noBgBlob);
-      setState(prev => ({ ...prev, noBgImage: noBgUrl, progress: 100 }));
-
-      if (abortRef.current) return;
-
-      // Step 3: Upload to Tripo
+      // Step 2: Upload direto para Tripo
       setState(prev => ({ ...prev, step: 'multi-view', progress: 5 }));
-
-      const noBgReader = new FileReader();
-      const noBgBase64Promise = new Promise<string>((resolve, reject) => {
-        noBgReader.onload = () => resolve(noBgReader.result as string);
-        noBgReader.onerror = reject;
-        noBgReader.readAsDataURL(noBgBlob);
-      });
-      const noBgBase64 = await noBgBase64Promise;
 
       const uploadResponse = await fetch('/api/generate-3d', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'upload', image: noBgBase64 })
+        body: JSON.stringify({ action: 'upload', image: base64Image })
       });
       
       if (!uploadResponse.ok) {
@@ -104,7 +74,7 @@ export function usePipeline() {
       const fileToken = uploadData?.data?.image_token;
       if (!fileToken) throw new Error('Não recebeu file_token do Tripo');
 
-      // Step 4: Create Multiview Task
+      // Step 3: Criar tarefa de Multi-view
       setState(prev => ({ ...prev, step: 'multi-view', progress: 10 }));
       const mvTaskResponse = await fetch('/api/generate-3d', {
         method: 'POST',
@@ -121,7 +91,7 @@ export function usePipeline() {
       const mvTaskId = mvTaskData?.data?.task_id;
       if (!mvTaskId) throw new Error('Não recebeu task_id das vistas');
 
-      // Poll for Multiview
+      // Pooling das Multi-views
       let mvComplete = false;
       let mvAttempts = 0;
       let mvImages: string[] = [];
@@ -146,14 +116,14 @@ export function usePipeline() {
           setState(prev => ({ ...prev, multiViewImages: mvImages, progress: 100 }));
           mvComplete = true;
         } else if (status === 'failed') {
-          throw new Error('A geração das vistas complementares falhou');
+          throw new Error('A geração das vistas complementares falhou no Tripo');
         }
       }
 
       if (!mvComplete) throw new Error('Timeout na geração das vistas');
       if (abortRef.current) return;
 
-      // Step 5: Create 3D generation task (using Multiview)
+      // Step 4: Criar tarefa 3D a partir das Multi-views
       setState(prev => ({ ...prev, step: 'generating-3d', progress: 5 }));
 
       const taskResponse = await fetch('/api/generate-3d', {
@@ -161,7 +131,7 @@ export function usePipeline() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: 'create-task', 
-          original_task_id: mvTaskId, // Alta fidelidade usando as vistas
+          original_task_id: mvTaskId,
           file_token: fileToken 
         })
       });
@@ -177,13 +147,12 @@ export function usePipeline() {
 
       setState(prev => ({ ...prev, taskId }));
 
-      // Step 6: Poll for 3D completion
+      // Step 5: Pooling do Modelo 3D
       let attempts = 0;
       const maxAttempts = 120;
 
       while (attempts < maxAttempts) {
         if (abortRef.current) return;
-
         await new Promise(r => setTimeout(r, 5000));
         attempts++;
 
@@ -205,12 +174,7 @@ export function usePipeline() {
           const modelUrl = pollData?.data?.output?.model;
           if (!modelUrl) throw new Error('Modelo gerado mas URL não encontrada');
 
-          setState(prev => ({
-            ...prev,
-            modelUrl,
-            step: 'done',
-            progress: 100,
-          }));
+          setState(prev => ({ ...prev, modelUrl, step: 'done', progress: 100 }));
           return;
         }
 
